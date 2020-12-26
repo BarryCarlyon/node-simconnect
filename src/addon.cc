@@ -354,10 +354,12 @@ void handleReceived_SystemState(Isolate *isolate, SIMCONNECT_RECV *pData, DWORD 
 	const v8::Local<v8::Context> context = isolate->GetCurrentContext();
 	obj->Set(context, String::NewFromUtf8(isolate, "integer").ToLocalChecked(), Number::New(isolate, pState->dwInteger));
 	obj->Set(context, String::NewFromUtf8(isolate, "float").ToLocalChecked(), Number::New(isolate, pState->fFloat));
-	obj->Set(context, String::NewFromUtf8(isolate, "string").ToLocalChecked(), String::NewFromUtf8(isolate, "string").ToLocalChecked());
+	//obj->Set(context, String::NewFromUtf8(isolate, "string").ToLocalChecked(), String::NewFromUtf8(isolate, "string").ToLocalChecked());
+	obj->Set(context, String::NewFromUtf8(isolate, "string").ToLocalChecked(), String::NewFromUtf8(isolate, pState->szString).ToLocalChecked());
 
 	Local<Value> argv[1] = {obj};
-	systemStateCallbacks[openEventId]->Call(isolate->GetCurrentContext()->Global(), 1, argv);
+	//systemStateCallbacks[openEventId]->Call(isolate->GetCurrentContext()->Global(), 1, argv);
+	systemStateCallbacks[pState->dwRequestID]->Call(isolate->GetCurrentContext()->Global(), 1, argv);
 }
 
 void handleReceived_Quit(Isolate *isolate)
@@ -439,13 +441,13 @@ void RequestSystemState(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
 	if (ghSimConnect)
 	{
-		Isolate *isolate = args.GetIsolate();
+		v8::Isolate *isolate = args.GetIsolate();
 		v8::Local<v8::Context> ctx = Nan::GetCurrentContext();
 
 		v8::String::Utf8Value stateName(isolate, args[0]->ToString(ctx).ToLocalChecked());
 
 		SIMCONNECT_DATA_REQUEST_ID reqId = getUniqueRequestId();
-		systemStateCallbacks[reqId] = new Nan::Callback(args[1].As<Function>());
+		systemStateCallbacks[reqId] = {new Nan::Callback(args[1].As<Function>())};
 		HRESULT hr = SimConnect_RequestSystemState(ghSimConnect, reqId, *stateName);
 		if (NT_ERROR(hr))
 		{
